@@ -185,15 +185,6 @@ async function getERC20Balance(
   return { symbol, tokenDecimals, tokenBalance };
 }
 
-program.addCommand(addressCommand());
-program.addCommand(balanceCommand());
-program.addCommand(sendCommand());
-
-program
-  .version("1.0.0")
-  .description("Simple Account Abstraction CLI")
-  .parse(process.argv);
-
 function addressCommand() {
   const addressCmd = new commander.Command("address")
     .description("show address")
@@ -312,3 +303,12 @@ function sendCommand() {
     );
   return sendCmd;
 }
+
+program.addCommand(addressCommand());
+program.addCommand(balanceCommand());
+program.addCommand(sendCommand());
+
+program
+  .version("1.0.0")
+  .description("Simple Account Abstraction CLI")
+  .parse(process.argv);
