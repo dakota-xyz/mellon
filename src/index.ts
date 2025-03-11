@@ -6,14 +6,48 @@ import { http, Hex, createPublicClient, Address, encodeFunctionData, formatUnits
 import { privateKeyToAccount } from "viem/accounts"
 import { ERC20Abi } from "./abi/erc20abi";
 
-import { baseSepolia } from "viem/chains"
+import { arbitrum, avalanche, base, baseSepolia, mainnet, optimism, polygon, Chain } from "viem/chains"
 import * as fs from 'fs';
 import * as path from 'path';
 
 const commander = require('commander');
 const program = new commander.Command();
 
-const chain = baseSepolia
+interface ChainConfig {
+    id: string,
+    chain: Chain,
+}
+
+const chains: ChainConfig[] = [
+    {
+        id: 'avalanche-mainnet',
+        chain: avalanche
+    },
+    {
+        id: 'arbitrum-mainnet',
+        chain: arbitrum
+    },
+    {
+        id: 'base-sepolia',
+        chain: baseSepolia,
+    },
+    {
+        id: 'base-mainnet',
+        chain: base,
+    },
+    {
+        id: 'ethereum-mainnet',
+        chain: mainnet
+    },
+    {
+        id: 'optimism-mainnet',
+        chain: optimism
+    },
+    {
+        id: 'polygon-mainnet',
+        chain: polygon
+    },
+]
 const entryPoint = getEntryPoint("0.7")
 const kernelVersion = KERNEL_V3_1
 
@@ -40,13 +74,21 @@ function loadConfig(): MellonConfig {
     return JSON.parse(configData);
 }
 
-async function setupWallet(): Promise<{ publicClient: typeof publicClient, kernelClient: typeof kernelClient }> {
-    const signer = privateKeyToAccount(process.env.PRIVATE_KEY as Hex);
+interface ChainClients {
+    publicClient: ReturnType<typeof createPublicClient>,
+    kernelClient: ReturnType<typeof createKernelAccountClient>
+}
 
+async function setupWallet(network: NetworkConfig): Promise<ChainClients> {
+    const signer = privateKeyToAccount(process.env.PRIVATE_KEY as Hex);
+    const chain = chains.find((chain) => chain.id === network.id)?.chain;
+    if (!chain) {
+        throw new Error('Chain not found');
+    }
     // Construct a public client
     const publicClient = createPublicClient({
         // Use your own RPC provider in production (e.g. Infura/Alchemy).
-        transport: http(process.env.BUNDLER_RPC),
+        transport: http(network.public_rpc),
         chain
     })
 
@@ -68,14 +110,14 @@ async function setupWallet(): Promise<{ publicClient: typeof publicClient, kerne
 
     const zerodevPaymaster = createZeroDevPaymasterClient({
         chain,
-        transport: http(process.env.PAYMASTER_RPC),
+        transport: http(network.paymaster_rpc),
     })
 
     // Construct a Kernel account client
     const kernelClient = createKernelAccountClient({
         account,
         chain,
-        bundlerTransport: http(process.env.BUNDLER_RPC),
+        bundlerTransport: http(network.bundler_rpc),
         // Required - the public client
         client: publicClient,
         paymaster: {
@@ -95,8 +137,12 @@ async function setupWallet(): Promise<{ publicClient: typeof publicClient, kerne
     return { publicClient, kernelClient };
 }
 
-async function getERC20Balance(tokenAddress: Address): Promise<{ symbol: string, tokenDecimals: number, tokenBalance: bigint }> {
-    const { publicClient, kernelClient } = await setupWallet();
+async function getERC20Balance(chainClients: ChainClients, tokenAddress: Address): Promise<{ symbol: string, tokenDecimals: number, tokenBalance: bigint }> {
+    const { publicClient, kernelClient } = chainClients;
+    if (!kernelClient.account) {
+        throw new Error('Account not found');
+    }
+    console.log('Getting balance for ' + tokenAddress + ' on ' + publicClient.chain?.rpcUrls.default.http[0]);
     const symbol = await publicClient.readContract({
         address: tokenAddress,
         abi: ERC20Abi,
@@ -129,7 +175,15 @@ function addressCommand() {
     const addressCmd = new commander.Command('address').
         description('show address').
         action(async () => {
-            const { kernelClient } = await setupWallet();
+            const config = loadConfig();
+            const network = config.networks.find((network) => network.id === "ethereum-mainnet");
+            if (!network) {
+                throw new Error('Chain not found');
+            }
+            const { kernelClient } = await setupWallet(network); // updated to use the found network object
+            if (!kernelClient.account) {
+                throw new Error('Account not found');
+            }
             const accountAddress = kernelClient.account.address
             console.log(accountAddress)
         });
@@ -141,18 +195,47 @@ function balanceCommand() {
         description('show balances').
         action(async () => {
             const config = loadConfig();
-            const currencies = (await Promise.all(config.networks.map(async (network: NetworkConfig) => {
-                if (network.id === 'base-sepolia') {
-                    return network.currencies;
+
+            const balances = await Promise.all(config.networks.map(async (network) => {
+                const client = await setupWallet(network);
+                if (!client.kernelClient.account) {
+                    throw new Error('Account not found');
                 }
-                return [];
-            }))).flat();
-            const balancesPromises = currencies.map(async (currency: CurrencyConfig) => {
-                const { symbol, tokenDecimals, tokenBalance } = await getERC20Balance(currency.address);
-                return { amount: formatUnits(tokenBalance, tokenDecimals), token: symbol, address: currency.address };
-            });
-            const balances = await Promise.all(balancesPromises);
-            console.table(balances);
+                const networkBalances = await Promise.all(network.currencies.map(async (currency) => {
+                    const { symbol, tokenDecimals, tokenBalance } = await getERC20Balance(client, currency.address);
+                    return {
+                        chain: network.id,
+                        amount: Number(formatUnits(tokenBalance, tokenDecimals)),
+                        token: symbol,
+                        address: currency.address
+                    };
+                }));
+                return networkBalances;
+            }));
+            console.table(balances.flat().filter((balance) => balance.amount > 0), ['chain', 'amount', 'token', 'address']);
+            // for (const network of config.networks) {
+            //     const client = await setupWallet(network);
+            //     if (!client.kernelClient.account) {
+            //         throw new Error('Account not found');
+            //     }
+
+            //     for (const currency of network.currencies) {
+            //         const chain = chains.find((chain) => chain.id === network.id)?.chain;
+            //         if (!chain) {
+            //             throw new Error('Chain not found');
+            //         }
+            //         const { symbol, tokenDecimals, tokenBalance } = await getERC20Balance(client, currency.address);
+            //         if (tokenBalance === BigInt(0)) {
+            //             continue;
+            //         }
+            //         balances.push({
+            //             chain: network.id,
+            //             amount: Number(formatUnits(tokenBalance, tokenDecimals)),
+            //             token: symbol,
+            //             address: currency.address
+            //         });
+            //     }
+            // }
         });
     return balanceCmd;
 }
@@ -164,7 +247,15 @@ function sendCommand() {
         argument('<tokenAddress>', 'address of token').
         argument('<toAddress>', 'address to send to').
         action(async (amount: string, tokenAddress: Address, toAddress: Address) => {
-            const { publicClient, kernelClient } = await setupWallet();
+            const config = loadConfig();
+            const network = config.networks.find((network) => network.id === "base-sepolia");
+            if (!network) {
+                throw new Error('Chain not found');
+            }
+            const { publicClient, kernelClient } = await setupWallet(network);
+            if (!kernelClient.account) {
+                throw new Error('Account not found');
+            }
             const symbol = await publicClient.readContract({
                 address: tokenAddress,
                 abi: ERC20Abi,
