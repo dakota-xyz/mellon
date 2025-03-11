@@ -48,7 +48,7 @@ The CLI is executed using `ts-node`. Below are a few examples of how to run the 
 Determine the onchain address from your private key:
 
 ```bash
-npx ts-node index.ts address
+mellon address
 ```
 
 **Example Output:**
@@ -62,7 +62,7 @@ npx ts-node index.ts address
 Retrieve the balance of tokens (e.g., DKUSD) for the onchain address:
 
 ```bash
-npx ts-node index.ts balance
+mellon balance
 ```
 
 **Example Output:**
@@ -80,7 +80,7 @@ npx ts-node index.ts balance
 Send tokens by providing the amount, recipient address, and sender's address:
 
 ```bash
-npx ts-node index.ts send 1.23 0xD3f3a31a5AcCEE9eC2032B3E4312C17Ee7f900EC 0xcDE358a204726d9F20F5C8DfC4aB7343ff470357
+mellon send 1.23 0xD3f3a31a5AcCEE9eC2032B3E4312C17Ee7f900EC 0xcDE358a204726d9F20F5C8DfC4aB7343ff470357
 ```
 
 **Example Output:**

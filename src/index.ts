@@ -3,12 +3,10 @@ import { createKernelAccount, createKernelAccountClient, createZeroDevPaymasterC
 import { KERNEL_V3_1, getEntryPoint } from "@zerodev/sdk/constants"
 import { signerToEcdsaValidator } from "@zerodev/ecdsa-validator"
 import { http, Hex, createPublicClient, Address, encodeFunctionData, formatUnits, parseUnits } from "viem"
-import { generatePrivateKey, privateKeyToAccount } from "viem/accounts"
-import { ERC20Abi } from "./lib/abi/erc20abi";
+import { privateKeyToAccount } from "viem/accounts"
+import { ERC20Abi } from "./abi/erc20abi";
 
 import { baseSepolia } from "viem/chains"
-import { getBalance } from "viem/_types/actions/public/getBalance";
-import { format } from "path";
 const commander = require('commander');
 const program = new commander.Command();
 
@@ -100,8 +98,6 @@ program
     .version("1.0.0")
     .description("Simple Account Abstraction CLI")
     .parse(process.argv);
-
-const options = program.opts();
 
 function addressCommand() {
     const addressCmd = new commander.Command('address').

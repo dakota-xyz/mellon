@@ -2,21 +2,23 @@
   "name": "mellon",
   "version": "1.0.0",
   "description": "Simple CLI for interacting with Account Abstraction wallets",
-  "main": "index.js",
+  "main": "./bin/mellon.js",
   "scripts": {
     "build": "npx tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "mellon": "./bin/mellon.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@zerodev/ecdsa-validator": "^5.4.4",
-    "@zerodev/permissions": "^5.5.0",
     "@zerodev/sdk": "^5.4.26",
     "commander": "^13.1.0",
     "dotenv": "^16.4.5",
-    "figlet": "^1.8.0"
+    "viem": "^2.23.9"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
