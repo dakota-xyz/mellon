@@ -7,12 +7,38 @@ import { privateKeyToAccount } from "viem/accounts"
 import { ERC20Abi } from "./abi/erc20abi";
 
 import { baseSepolia } from "viem/chains"
+import * as fs from 'fs';
+import * as path from 'path';
+
 const commander = require('commander');
 const program = new commander.Command();
 
 const chain = baseSepolia
 const entryPoint = getEntryPoint("0.7")
 const kernelVersion = KERNEL_V3_1
+
+interface CurrencyConfig {
+    symbol: string,
+    address: Address
+}
+
+interface NetworkConfig {
+    id: string,
+    bundler_rpc: string,
+    paymaster_rpc: string,
+    public_rpc: string,
+    currencies: CurrencyConfig[]
+}
+
+interface MellonConfig {
+    networks: NetworkConfig[]
+}
+
+function loadConfig(): MellonConfig {
+    const configPath = path.resolve(__dirname, 'config.json');
+    const configData = fs.readFileSync(configPath, 'utf-8');
+    return JSON.parse(configData);
+}
 
 async function setupWallet(): Promise<{ publicClient: typeof publicClient, kernelClient: typeof kernelClient }> {
     const signer = privateKeyToAccount(process.env.PRIVATE_KEY as Hex);
@@ -114,10 +140,16 @@ function balanceCommand() {
     const balanceCmd = new commander.Command('balance').
         description('show balances').
         action(async () => {
-            const tokens: Address[] = ['0xD3f3a31a5AcCEE9eC2032B3E4312C17Ee7f900EC']
-            const balancesPromises = tokens.map(async (tokenAddress: Address) => {
-                const { symbol, tokenDecimals, tokenBalance } = await getERC20Balance(tokenAddress);
-                return { amount: formatUnits(tokenBalance, tokenDecimals), token: symbol, address: tokenAddress };
+            const config = loadConfig();
+            const currencies = (await Promise.all(config.networks.map(async (network: NetworkConfig) => {
+                if (network.id === 'base-sepolia') {
+                    return network.currencies;
+                }
+                return [];
+            }))).flat();
+            const balancesPromises = currencies.map(async (currency: CurrencyConfig) => {
+                const { symbol, tokenDecimals, tokenBalance } = await getERC20Balance(currency.address);
+                return { amount: formatUnits(tokenBalance, tokenDecimals), token: symbol, address: currency.address };
             });
             const balances = await Promise.all(balancesPromises);
             console.table(balances);
