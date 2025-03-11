@@ -1,6 +1,6 @@
 # mellon
 
-<img src="./github/images/doors_of_durin.webp" style="display:block;float:none;margin-left:auto;margin-right:auto;width:60%" />
+<img src="./.github/images/doors_of_durin.webp" style="display:block;float:none;margin-left:auto;margin-right:auto;width:60%" />
 
 This repository provides a command-line interface (CLI) tool built with TypeScript that interacts with blockchain functionality. The tool allows you to:
 
