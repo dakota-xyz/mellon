@@ -1,5 +1,7 @@
 # mellon
 
+![doors_of_durin](.github/images/doors_of_durin.webp)
+
 This repository provides a command-line interface (CLI) tool built with TypeScript that interacts with blockchain functionality. The tool allows you to:
 
 - Determine your onchain address from a private key.
