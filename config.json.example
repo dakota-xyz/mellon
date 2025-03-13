@@ -1,4 +1,18 @@
 {
+    "keys": [
+        {
+            "name": "Checking",
+            "privateKey": "0xYOUR_PRIVATE_KEY"
+        },
+        {
+            "name": "Savings",
+            "privateKey": "0xANOTHER_PRIVATE_KEY"
+        },
+        {
+            "name": "Treasury",
+            "privateKey": "0xSTILL_ANOTHER_PRIVATE_KEY"
+        }
+    ],
     "networks": [
         {
             "id": "arbitrum-mainnet",

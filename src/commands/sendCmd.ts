@@ -3,55 +3,107 @@ import { ERC20Abi } from "../abi/erc20abi";
 import { parseUnits } from "viem";
 import { encodeFunctionData } from "viem";
 import { setupWallet } from "../wallet/setupWallet";
-import { loadNetworkConfig } from "../networkConfig";
+import { loadConfig } from "../config";
 import * as commander from "commander";
 
 export function sendCommand() {
   const sendCmd = new commander.Command("send")
     .description("send tokens")
+    .argument("<from>", "name of address to send from")
     .argument("<amount>", "amount to send")
-    .argument("<tokenAddress>", "address of token")
+    .argument("<token>", "token to send")
     .argument("<toAddress>", "address to send to")
+    .option("-n, --network <network>", "network to use")
     .action(
-      async (amount: string, tokenAddress: Address, toAddress: Address) => {
-        const config = loadNetworkConfig();
-        const network = config.find((network) => network.id === "base-sepolia");
-        if (!network) {
-          throw new Error("Chain not found");
+      async (
+        from: string,
+        amount: string,
+        token: string,
+        toAddress: Address,
+        options: { network?: string }
+      ) => {
+        const config = loadConfig();
+        const networkId = options.network || "base-sepolia";
+        if (!networkId) {
+          throw new Error("Must specify network");
         }
-        const { publicClient, kernelClient } = await setupWallet(network);
+        const networkConfig = config.networks.find(
+          (network) => network.id === networkId
+        );
+        if (!networkConfig) {
+          throw new Error("Chain not found:" + networkId);
+        }
+        const fromAddress = config.keys.find(
+          (key) => key.name === (from || "default")
+        );
+        if (!fromAddress) {
+          throw new Error("From address not found: " + (from || "default"));
+        }
+        const { publicClient, kernelClient } = await setupWallet(
+          fromAddress.privateKey,
+          networkConfig
+        );
         if (!kernelClient.account) {
           throw new Error("Account not found");
         }
-        const symbol = await publicClient.readContract({
-          address: tokenAddress,
-          abi: ERC20Abi,
-          functionName: "symbol",
-        });
-        const decimals = await publicClient.readContract({
-          address: tokenAddress,
-          abi: ERC20Abi,
-          functionName: "decimals",
-        });
+
+        const currency =
+          token === "ETH"
+            ? { address: "0x00" as Address, symbol: "ETH" }
+            : networkConfig.currencies.find(
+                (currency) => currency.symbol === token
+              );
+        if (!currency) {
+          throw new Error("Token symbol not found: " + token);
+        }
+        const symbol =
+          token === "ETH"
+            ? "ETH"
+            : await publicClient.readContract({
+                address: currency.address,
+                abi: ERC20Abi,
+                functionName: "symbol",
+              });
+        const decimals =
+          token === "ETH"
+            ? 18
+            : await publicClient.readContract({
+                address: currency.address,
+                abi: ERC20Abi,
+                functionName: "decimals",
+              });
 
         console.log("Preparing...");
-        console.log("Amount: " + amount + " " + symbol);
-        console.log("From:   " + kernelClient.account.address);
-        console.log("To:     " + toAddress);
+        console.log("Amount:  " + amount + " " + symbol);
+        console.log(
+          "From:    " + from + "(" + kernelClient.account.address + ")"
+        );
+        console.log("Network: " + networkConfig.id);
+        console.log("To:      " + toAddress);
         console.log("\nSending...");
         const fullamount = parseUnits(amount, decimals);
+
         const userOpHash = await kernelClient.sendUserOperation({
-          callData: await kernelClient.account.encodeCalls([
-            {
-              to: tokenAddress,
-              value: BigInt(0),
-              data: encodeFunctionData({
-                abi: ERC20Abi,
-                functionName: "transfer",
-                args: [toAddress, fullamount],
-              }),
-            },
-          ]),
+          callData:
+            token === "ETH"
+              ? await kernelClient.account.encodeCalls([
+                  {
+                    to: toAddress,
+                    value: fullamount,
+                    data: "0x",
+                  },
+                ])
+              : await kernelClient.account.encodeCalls([
+                  {
+                    to: currency.address,
+                    value: BigInt(0),
+                    data: encodeFunctionData({
+                      abi: ERC20Abi,
+                      functionName: "transfer",
+                      args: [toAddress, fullamount],
+                    }),
+                  },
+                ]),
         });
 
         console.log("UserOp:", userOpHash);

@@ -1,17 +1,26 @@
 import { formatUnits } from "viem";
 import { setupWallet } from "../wallet/setupWallet";
-import { loadNetworkConfig } from "../networkConfig";
+import { loadConfig } from "../config";
 import { getERC20Balance } from "../wallet/getERC20Balance";
 import * as commander from "commander";
 
-export function balanceCommand() {
-  const balanceCmd = new commander.Command("balance")
+export function balancesCommand() {
+  const balanceCmd = new commander.Command("balances")
     .description("show balances")
-    .action(async () => {
-      const config = loadNetworkConfig();
+    .argument("<name>", "name of address to show balances")
+    .action(async (name: string) => {
+      const config = loadConfig();
+      const fromAddress = config.keys.find((key) => key.name === name);
+      if (!fromAddress) {
+        throw new Error("Address not found: " + name);
+      }
       const balances = await Promise.all(
-        config.map(async (network) => {
-          const client = await setupWallet(network);
+        config.networks.map(async (network) => {
+          // Skip networks without public RPC
+          if (network.public_rpc === "") {
+            return [];
+          }
+          const client = await setupWallet(fromAddress.privateKey, network);
           if (!client.kernelClient.account) {
             throw new Error("Account not found");
           }
@@ -27,6 +36,16 @@ export function balanceCommand() {
               };
             })
           );
+          const nativeBalance = await client.publicClient.getBalance({
+            address: client.kernelClient.account.address,
+            blockTag: "latest",
+          });
+          networkBalances.push({
+            chain: network.id,
+            amount: Number(formatUnits(nativeBalance, 18)),
+            token: "ETH",
+            address: client.kernelClient.account.address,
+          });
           return networkBalances;
         })
       );

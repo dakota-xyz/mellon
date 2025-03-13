@@ -28,17 +28,39 @@ This repository provides a command-line interface (CLI) tool built with TypeScri
 2. **Install dependencies:**
 
    ```bash
-   npm install
+   npm install -g .
    ```
 
-3. **Configure Environment Variables:**
+3. **Configure:**
 
-   Create a `.env` file in the root directory with the following parameters:
+   ```
+   mkdir ${HOME}/.mellon/
+   cp config.json.example ${HOME}/.mellon/config.json
+   ```
 
-   ```dotenv
-   BUNDLER_RPC=""
-   PAYMASTER_RPC=""
-   PRIVATE_KEY=""
+   Set the Keys you wish to use.
+
+   ```
+   "keys": [
+      {
+         "name": "Checking",
+         "privateKey": "0xYOUR_PRIVATE_KEY"
+      },
+   ]
+   ```
+
+   RPC endpoints for each network you wish to access.
+
+   ```
+   "networks": [
+        {
+            "id": "arbitrum-mainnet",
+            "bundler_rpc": "",
+            "paymaster_rpc": "",
+            "public_rpc": "",
+        }
+        ...
+   ]
    ```
 
    Replace the empty strings with your actual RPC endpoints and your private key.
@@ -47,59 +69,67 @@ This repository provides a command-line interface (CLI) tool built with TypeScri
 
 The CLI is executed using `ts-node`. Below are a few examples of how to run the application:
 
-### Get Onchain Address
+### Get Onchain Addresses
 
-Determine the onchain address from your private key:
+Determine the onchain addresses from your private key:
 
 ```bash
-mellon address
+mellon addresses
 ```
 
 **Example Output:**
 
 ```plaintext
-0x87008541cE1029156ADA8356976DC4e8E39C895F
+┌─────────┬────────────┬──────────────────────────────────────────────┐
+│ (index) │ name       │ address                                      │
+├─────────┼────────────┼──────────────────────────────────────────────┤
+│ 0       │ 'Checking' │ '0x87008541cE1029156ADA8356976DC4e8E39C895F' │
+│ 1       │ 'Savings'  │ '0xE9B217797098808233142A253C1711e9C7ee50aD' │
+│ 2       │ 'Treasury' │ '0x0BEdB3Df1A7179c1f46f92E7549cbaB057FC2c77' │
+└─────────┴────────────┴──────────────────────────────────────────────┘
 ```
 
 ### Check Token Balance
 
-Retrieve the balance of tokens (e.g., DKUSD) for the onchain address:
+Retrieve the balance of tokens (e.g., DKUSD) for the Checking address:
 
 ```bash
-mellon balance
+mellon balances Checking
 ```
 
 **Example Output:**
 
 ```plaintext
-┌─────────┬────────┬─────────┬──────────────────────────────────────────────┐
-│ (index) │ amount │ token   │ address                                      │
-├─────────┼────────┼─────────┼──────────────────────────────────────────────┤
-│ 0       │ '4329' │ 'DKUSD' │ '0xD3f3a31a5AcCEE9eC2032B3E4312C17Ee7f900EC' │
-└─────────┴────────┴─────────┴──────────────────────────────────────────────┘
+┌─────────┬────────────────┬─────────┬─────────┬──────────────────────────────────────────────┐
+│ (index) │ chain          │ amount  │ token   │ address                                      │
+├─────────┼────────────────┼─────────┼─────────┼──────────────────────────────────────────────┤
+│ 0       │ 'base-sepolia' │ 4319.08 │ 'DKUSD' │ '0xD3f3a31a5AcCEE9eC2032B3E4312C17Ee7f900EC' │
+│ 1       │ 'base-sepolia' │ 1       │ 'USDC'  │ '0x036CbD53842c5426634e7929541eC2318f3dCF7e' │
+└─────────┴────────────────┴─────────┴─────────┴──────────────────────────────────────────────┘
 ```
 
 ### Send Tokens
 
-Send tokens by providing the amount, recipient address, and sender's address:
+Sending 1 DKUSD to an address
 
 ```bash
-mellon send 1.23 0xD3f3a31a5AcCEE9eC2032B3E4312C17Ee7f900EC 0xcDE358a204726d9F20F5C8DfC4aB7343ff470357
+mellon send Checking 1 DKUSD 0xcDE358a204726d9F20F5C8DfC4aB7343ff470357 --network base-sepolia
 ```
 
 **Example Output:**
 
 ```plaintext
 Preparing...
-Amount: 1.23 DKUSD
-From:   0x87008541cE1029156ADA8356976DC4e8E39C895F
-To:     0xcDE358a204726d9F20F5C8DfC4aB7343ff470357
+Amount:  1 DKUSD
+From:    Checking(0x87008541cE1029156ADA8356976DC4e8E39C895F)
+Network: base-sepolia
+To:      0xcDE358a204726d9F20F5C8DfC4aB7343ff470357
 
 Sending...
-UserOp: 0x0564a625a24e5b754ede19d7402a6c423192fac98e1e4f06a51ba4c59b2e305f
+UserOp: 0x69f64bf96c000fbda6c49e0253f0a9b4bde9afbf7f405cf620b30f2b607e93f8
 
 Waiting for receipt...
-TxHash: 0x8cd8a22bf24a49a5dfab45695bbd5b3ef1d68a5653c683f9d0ea33740c8f5667
+TxHash: 0x56eeb5c8010e4526c9940c67277bfa70afe7079a25e48fbf814c17382570fba4
 Status: success
 ```
 

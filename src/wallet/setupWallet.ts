@@ -8,16 +8,17 @@ import { KERNEL_V3_1, getEntryPoint } from "@zerodev/sdk/constants";
 import { signerToEcdsaValidator } from "@zerodev/ecdsa-validator";
 import { http, createPublicClient, Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { NetworkConfig } from "../networkConfig";
+import { NetworkConfig } from "../config";
 import { chains, ChainClients } from "./chains";
 
 const entryPoint = getEntryPoint("0.7");
 const kernelVersion = KERNEL_V3_1;
 
 export async function setupWallet(
+  privateKey: Hex, // added privateKey parameter
   network: NetworkConfig
 ): Promise<ChainClients> {
-  const signer = privateKeyToAccount(process.env.PRIVATE_KEY as Hex);
+  const signer = privateKeyToAccount(privateKey);
   const chain = chains.find((chain) => chain.id === network.id)?.chain;
   if (!chain) {
     throw new Error("Chain not found");
