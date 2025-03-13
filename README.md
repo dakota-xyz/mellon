@@ -16,6 +16,24 @@ This repository provides a command-line interface (CLI) tool built with TypeScri
 - npm
 - [ts-node](https://www.npmjs.com/package/ts-node) (if not installed globally, you can run it via npx)
 
+## Usage
+
+```
+Usage: mellon [options] [command]
+
+Simple Account Abstraction CLI
+
+Options:
+  -V, --version                                       output the version number
+  -h, --help                                          display help for command
+
+Commands:
+  addresses                                           show addresses
+  balances <name>                                     show balances
+  send [options] <from> <amount> <token> <toAddress>  send tokens
+  help [command]                                      display help for command
+```
+
 ## Setup
 
 1. **Clone the repository:**
